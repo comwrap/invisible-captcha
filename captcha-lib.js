@@ -1,7 +1,8 @@
 import { PageLoadBotDetector } from './PageLoadBotDetector.js';
 import { BotDetector } from './BotDetector.js';
+import { NavigationRateDetector } from './NavigationRateDetector.js';
 
-export { PageLoadBotDetector, BotDetector };
+export { PageLoadBotDetector, BotDetector, NavigationRateDetector };
 
 function setCookie(name, value, hours, path = '/', secure = false, sameSite = 'Lax') {
     console.log("Setting cookie: ", name, value, hours, path, secure, sameSite);
@@ -23,6 +24,18 @@ function setCookie(name, value, hours, path = '/', secure = false, sameSite = 'L
 setCookie('validCaptcha', 'true', 1);
 
 const pageLoadDetector = new PageLoadBotDetector();
+let botDetector = null;
+let lastCaptchaCookie = null;
+
+// In BotDetector constructor:
+this.navRateDetector = new NavigationRateDetector();
+
+function readNavigationRateScore() {
+  const navReport = this.navRateDetector.getReport();
+  console.log("Navigation rate report: ", JSON.stringify(navReport));
+  return navReport.score;
+}
+
 
 function readPageLoadScore() {
   if (!pageLoadDetector.ready) {
@@ -30,25 +43,78 @@ function readPageLoadScore() {
     return null;
   }
   const pageReport = pageLoadDetector.getReport();
-  console.log("Page report: ", pageReport);
+  console.log("Page report: ", JSON.stringify(pageReport));
   return pageReport.score;
 }
 
-function pageLoadThreshold() {
-  const raw = document.body?.dataset.pageLoadThreshold;
+function thresholdFrom(datasetKey) {
+  const raw = document.body?.dataset[datasetKey];
   const threshold = Number(raw);
   return Number.isFinite(threshold) ? threshold : 0.5;
+}
+
+function pageLoadThreshold() {
+  return thresholdFrom('pageLoadThreshold');
+}
+
+function botThreshold() {
+  return thresholdFrom('botThreshold');
+}
+
+function readBotScore() {
+  if (!botDetector) {
+    return null;
+  }
+  const report = botDetector.getReport();
+  if (report.eventCount < botDetector.config.minEventsForScore) {
+    return null;
+  }
+  return report.score;
+}
+
+function scoreIsValid(score, threshold) {
+  return score < threshold;
+}
+
+function applyCaptchaCookie() {
+  const pageScore = pageLoadDetector.ready ? pageLoadDetector.score : null;
+  const navScore = navRateDetector.score;
+
+  const botScore = readBotScore();
+  if (pageScore === null && botScore === null) {
+    return false;
+  }
+
+   if (pageScore !== null) {
+    const isHuman =  scoreIsValid(pageScore, pageLoadThreshold());
+    if(!isHuman) {
+        setCookie('isValidCaptcha', 'false', 1); 
+        return pageLoadDetector.ready;
+    }   
+  }
+  if (pageScore !== null) {
+    const isHuman =  scoreIsValid(pageScore, pageLoadThreshold());
+    if(!isHuman) {
+        setCookie('isValidCaptcha', 'false', 1); 
+        return pageLoadDetector.ready;
+    }   
+  }
+
+  if (botScore !== null) {
+    isHuman = scoreIsValid(botScore, botThreshold());
+    setCookie('isValidCaptcha', isHuman, 1);
+  }
+
+  return pageLoadDetector.ready;
 }
 
 function applyPageLoadCaptchaCookie() {
   if (!pageLoadDetector.ready) {
     return false;
   }
-  const score = readPageLoadScore();
-  const threshold = pageLoadThreshold();
-  const valid = score < threshold ? 'false' : 'true';
-  setCookie('isValidCaptcha', valid, 1);
-  return true;
+  readPageLoadScore();
+  readNavigationRateScore();
+  return applyCaptchaCookie();
 }
 
 function watchPageLoadCaptcha() {
@@ -67,17 +133,30 @@ function startBotTrackerDemo() {
   watchPageLoadCaptcha();
 
   const detector = new BotDetector({ accessibilityMode: false, scoreDebounceMs: 200 });
+  botDetector = detector;
+
   const scoreDisplay = document.getElementById('scoreDisplay');
   const signalBars = document.getElementById('signalBars');
   const flagsContainer = document.getElementById('flagsContainer');
   const metaInfo = document.getElementById('metaInfo');
+  const btnStart = document.getElementById('btnStart');
+  const btnStop = document.getElementById('btnStop');
+  const btnReset = document.getElementById('btnReset');
+  const accessibilityToggle = document.getElementById('accessibilityToggle');
+  const hasDemo = scoreDisplay && signalBars && flagsContainer && metaInfo && btnStart && btnStop && btnReset && accessibilityToggle;
 
-  document.getElementById('btnStart').addEventListener('click', () => {
+  if (!hasDemo) {
+    detector.start();
+    setInterval(() => applyCaptchaCookie(), 500);
+    return;
+  }
+
+  btnStart.addEventListener('click', () => {
     detector.start();
     scoreDisplay.textContent = 'Monitoring...';
   });
-  document.getElementById('btnStop').addEventListener('click', () => { detector.stop(); });
-  document.getElementById('btnReset').addEventListener('click', () => {
+  btnStop.addEventListener('click', () => { detector.stop(); });
+  btnReset.addEventListener('click', () => {
     detector.reset();
     scoreDisplay.textContent = 'Reset - waiting for input...';
     scoreDisplay.className = 'score-display';
@@ -85,7 +164,7 @@ function startBotTrackerDemo() {
     flagsContainer.innerHTML = '';
     metaInfo.textContent = '';
   });
-  document.getElementById('accessibilityToggle').addEventListener('change', (e) => {
+  accessibilityToggle.addEventListener('change', (e) => {
     detector.updateConfig({ accessibilityMode: e.target.checked });
   });
 
@@ -93,6 +172,7 @@ function startBotTrackerDemo() {
     const report = detector.getReport();
     console.log("Report:: ", report);
     if (report.eventCount === 0) return;
+    applyCaptchaCookie();
     const scorePercent = (report.score * 100).toFixed(1);
     scoreDisplay.textContent = `Score: ${scorePercent}% Bot Probability`;
     if (report.score < 0.3) {
