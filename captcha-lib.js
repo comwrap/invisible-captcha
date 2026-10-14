@@ -27,13 +27,35 @@ const pageLoadDetector = new PageLoadBotDetector();
 let botDetector = null;
 let lastCaptchaCookie = null;
 
-// In BotDetector constructor:
-this.navRateDetector = new NavigationRateDetector();
+const navRateDetector = new NavigationRateDetector();
+let botReportSent = false;
 
 function readNavigationRateScore() {
-  const navReport = this.navRateDetector.getReport();
+  const navReport = navRateDetector.getReport();
   console.log("Navigation rate report: ", JSON.stringify(navReport));
   return navReport.score;
+}
+
+function botJsonUrl() {
+  let path = window.location.pathname;
+  if (path.length > 1 && path.endsWith('/')) {
+    path = path.slice(0, -1);
+  }
+  if (path.endsWith('.html')) {
+    path = path.slice(0, -'.html'.length);
+  }
+  if (path === '/' || path === '') {
+    path = '/int/en';
+  }
+  return `${window.location.origin}${path}.bot.json`;
+}
+
+function reportBot() {
+  if (botReportSent) {
+    return;
+  }
+  botReportSent = true;
+  fetch(botJsonUrl(), { method: 'GET', credentials: 'same-origin' });
 }
 
 
@@ -78,31 +100,32 @@ function scoreIsValid(score, threshold) {
 
 function applyCaptchaCookie() {
   const pageScore = pageLoadDetector.ready ? pageLoadDetector.score : null;
-  const navScore = navRateDetector.score;
-
+  const navScore =  navRateDetector.score;
+  
+  if (navScore !== null && !scoreIsValid(navScore, pageLoadThreshold())) {
+    setCookie('isValidCaptcha', 'false', 1);
+    reportBot();
+    return pageLoadDetector.ready;
+  }
   const botScore = readBotScore();
   if (pageScore === null && botScore === null) {
     return false;
   }
 
-   if (pageScore !== null) {
-    const isHuman =  scoreIsValid(pageScore, pageLoadThreshold());
-    if(!isHuman) {
-        setCookie('isValidCaptcha', 'false', 1); 
-        return pageLoadDetector.ready;
-    }   
-  }
-  if (pageScore !== null) {
-    const isHuman =  scoreIsValid(pageScore, pageLoadThreshold());
-    if(!isHuman) {
-        setCookie('isValidCaptcha', 'false', 1); 
-        return pageLoadDetector.ready;
-    }   
+  if (pageScore !== null && !scoreIsValid(pageScore, pageLoadThreshold())) {
+    setCookie('isValidCaptcha', 'false', 1);
+    reportBot();
+    return pageLoadDetector.ready;
   }
 
   if (botScore !== null) {
-    isHuman = scoreIsValid(botScore, botThreshold());
-    setCookie('isValidCaptcha', isHuman, 1);
+    const isHuman = scoreIsValid(botScore, botThreshold());
+    if (!isHuman) {
+      setCookie('isValidCaptcha', 'false', 1);
+      reportBot();
+    } else {
+      setCookie('isValidCaptcha', 'true', 1);
+    }
   }
 
   return pageLoadDetector.ready;
