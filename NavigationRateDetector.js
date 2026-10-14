@@ -5,6 +5,7 @@ export class NavigationRateDetector {
     this.windowMs = options.windowMs || 60000; // analyse last 60s
     this.flags = [];
     this.score = 0;
+    this.ready = false;
    
     // Record this page load immediately
     this._recordNavigation();
@@ -49,6 +50,7 @@ export class NavigationRateDetector {
    
     if (history.length < 3) {
     this.score = 0; // not enough data
+    this.ready = true;
     return;
     }
    
@@ -77,6 +79,7 @@ export class NavigationRateDetector {
     totalW += weight;
     }
     this.score = Math.min(1, Math.max(0, sum / totalW));
+    this.ready = true;
     }
    
     // ── Signal 1: Reload Rate ──────────────────────────────
@@ -346,6 +349,7 @@ export class NavigationRateDetector {
     // ── Public API ─────────────────────────────────────────
     getReport() {
     return {
+    ready: this.ready,
     score: this.score,
     signals: this.signals || {},
     flags: [...new Set(this.flags)],

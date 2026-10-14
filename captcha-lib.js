@@ -31,6 +31,9 @@ const navRateDetector = new NavigationRateDetector();
 let botReportSent = false;
 
 function readNavigationRateScore() {
+  if (!navRateDetector.ready) {
+    return null;
+  }
   const navReport = navRateDetector.getReport();
   console.log("Navigation rate report: ", JSON.stringify(navReport));
   return navReport.score;
@@ -100,8 +103,8 @@ function scoreIsValid(score, threshold) {
 
 function applyCaptchaCookie() {
   const pageScore = pageLoadDetector.ready ? pageLoadDetector.score : null;
-  const navScore =  navRateDetector.score;
-  
+  const navScore = navRateDetector.ready ? navRateDetector.score : null;
+
   if (navScore !== null && !scoreIsValid(navScore, pageLoadThreshold())) {
     setCookie('isValidCaptcha', 'false', 1);
     reportBot();
@@ -136,7 +139,6 @@ function applyPageLoadCaptchaCookie() {
     return false;
   }
   readPageLoadScore();
-  readNavigationRateScore();
   return applyCaptchaCookie();
 }
 
@@ -151,8 +153,25 @@ function watchPageLoadCaptcha() {
   }, 50);
 }
 
+function watchNavigationRateCaptcha() {
+  if (navRateDetector.ready) {
+    readNavigationRateScore();
+    applyCaptchaCookie();
+    return;
+  }
+  const timer = setInterval(() => {
+    if (!navRateDetector.ready) {
+      return;
+    }
+    clearInterval(timer);
+    readNavigationRateScore();
+    applyCaptchaCookie();
+  }, 50);
+}
+
 function startBotTrackerDemo() {
   console.log("DOMContentLoaded");
+  watchNavigationRateCaptcha();
   watchPageLoadCaptcha();
 
   const detector = new BotDetector({ accessibilityMode: false, scoreDebounceMs: 200 });

@@ -42,8 +42,7 @@ export class PageLoadBotDetector {
       documentTiming:   this._analyzeDocumentTiming(nav),
     };
     console.log("Signals: ", this.signals);
-    console.log("Score: ", this.score);
-    console.log("Ready: ", this.ready);
+
     // Weighted aggregation
     const weights = {
       loadGap: 0.20, resourceCount: 0.18, paintTiming: 0.18,
@@ -59,6 +58,7 @@ export class PageLoadBotDetector {
     }
     this.score = Math.min(1, Math.max(0, weightedSum / totalWeight));
     this.ready = true;
+    console.log("Page load detector score: ", this.score);
   }
 
   // ── Signal 1: DOMContentLoaded → Load gap ──────────────
