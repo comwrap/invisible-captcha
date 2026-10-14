@@ -58,7 +58,7 @@ function reportBot() {
     return;
   }
   botReportSent = true;
-  fetch(botJsonUrl(), { method: 'GET', credentials: 'same-origin' });
+  window.location.replace(botJsonUrl());
 }
 
 
