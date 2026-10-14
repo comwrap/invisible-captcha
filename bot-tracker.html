@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bot Detection Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { text-align: center; margin-bottom: 10px; font-size: 1.8rem; }
+    p { text-align: center; color: #aaa; margin-bottom: 20px; }
+    .score-display { text-align: center; font-size: 1.5rem; font-weight: bold; padding: 20px; border-radius: 12px; background: #16213e; margin-bottom: 20px; transition: background 0.3s; }
+    .score-human { background: #1b4332; color: #95d5b2; }
+    .score-uncertain { background: #3d3200; color: #ffd60a; }
+    .score-bot { background: #3d0000; color: #ff6b6b; }
+    .controls { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+    .controls button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: transform 0.1s; }
+    .controls button:active { transform: scale(0.95); }
+    .btn-primary { background: #4361ee; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-warning { background: #e63946; color: white; }
+    .controls label { color: #aaa; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+    .interaction-area { height: 150px; border: 2px dashed #4361ee; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #4361ee; font-size: 1.1rem; margin-bottom: 20px; user-select: none; transition: border-color 0.3s; }
+    .interaction-area:hover { border-color: #7209b7; color: #7209b7; }
+    .report { background: #16213e; border-radius: 12px; padding: 20px; }
+    .report h3 { margin-bottom: 15px; color: #ccc; }
+    .signal-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .signal-name { width: 160px; font-size: 0.85rem; color: #aaa; flex-shrink: 0; }
+    .signal-track { flex: 1; height: 8px; background: #0f3460; border-radius: 4px; overflow: hidden; }
+    .signal-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .signal-value { width: 40px; text-align: right; font-size: 0.8rem; color: #aaa; }
+    .flags { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .flag { background: #e63946; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .meta { margin-top: 15px; font-size: 0.8rem; color: #666; }
+  </style>
+  <script type="module" src="captcha-lib.js"></script>
+</head>
+<body data-page-load-threshold="0.5" data-bot-threshold="0.5">
+  <div class="container">
+    <h1>🤖 Bot Detection Framework Demo</h1>
+    <p>Move your mouse, click around, and use the keyboard. The detector analyzes your behavior in real-time.</p>
+    <div class="score-display" id="scoreDisplay">Waiting for input...</div>
+    <div class="controls">
+      <button class="btn-primary" id="btnStart">Start Detection</button>
+      <button class="btn-secondary" id="btnStop">Stop</button>
+      <button class="btn-warning" id="btnReset">Reset</button>
+      <label>
+        <input type="checkbox" id="accessibilityToggle">
+        Accessibility Mode
+      </label>
+    </div>
+    <div class="interaction-area" id="interactionArea">Move your mouse here and click around</div>
+    <div class="report" id="reportContainer">
+      <h3>Signal Analysis</h3>
+      <div id="signalBars"></div>
+      <div class="flags" id="flagsContainer"></div>
+      <div class="meta" id="metaInfo"></div>
+    </div>
+  </div>
+</body>
+</html>
