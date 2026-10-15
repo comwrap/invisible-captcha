@@ -4,8 +4,8 @@ import { NavigationRateDetector } from './NavigationRateDetector.js';
 
 export { PageLoadBotDetector, BotDetector, NavigationRateDetector };
 
-function setCookie(name, value, hours, path = '/', secure = false, sameSite = 'Lax') {
-    console.log("Setting cookie: ", name, value, hours, path, secure, sameSite);
+function setCookie(name, value, hours, path = '/', secure = false, sameSite = 'Lax', reason = null) {
+    console.log("Setting cookie: ", name, value, hours, reason);
     const expires = new Date();
     expires.setTime(expires.getTime() + (hours * 60 * 60 * 1000)); // hours * 3,600,000 ms
 
@@ -21,7 +21,6 @@ function setCookie(name, value, hours, path = '/', secure = false, sameSite = 'L
     document.cookie = cookieString;
     }
 
-setCookie('validCaptcha', 'true', 1);
 
 const pageLoadDetector = new PageLoadBotDetector();
 let botDetector = null;
@@ -53,7 +52,7 @@ function botJsonUrl() {
   return `${window.location.origin}${path}.bot.json`;
 }
 
-function reportBot() {
+function callBotServlet() {
   if (botReportSent) {
     return;
   }
@@ -94,10 +93,11 @@ function readBotScore() {
   if (report.eventCount < botDetector.config.minEventsForScore) {
     return null;
   }
+  console.log("Bot report: ", JSON.stringify(report));
   return report.score;
 }
 
-function scoreIsValid(score, threshold) {
+function isValidHumanScore(score, threshold) {
   return score < threshold;
 }
 
@@ -105,9 +105,9 @@ function applyCaptchaCookie() {
   const pageScore = pageLoadDetector.ready ? pageLoadDetector.score : null;
   const navScore = navRateDetector.ready ? navRateDetector.score : null;
 
-  if (navScore !== null && !scoreIsValid(navScore, pageLoadThreshold())) {
-    setCookie('isValidCaptcha', 'false', 1);
-    reportBot();
+  if (navScore !== null && !isValidHumanScore(navScore, pageLoadThreshold())) {
+    setCookie('isValidCaptcha', 'false', 1, "Navigation score is not human");
+    callBotServlet();
     return pageLoadDetector.ready;
   }
   const botScore = readBotScore();
@@ -115,20 +115,20 @@ function applyCaptchaCookie() {
     return false;
   }
 
-  if (pageScore !== null && !scoreIsValid(pageScore, pageLoadThreshold())) {
-    setCookie('isValidCaptcha', 'false', 1);
-    reportBot();
+  if (pageScore !== null && !isValidHumanScore(pageScore, pageLoadThreshold())) {
+    setCookie('isValidCaptcha', 'false', 1, "Page score is not human");
+    callBotServlet();
     return pageLoadDetector.ready;
   }
 
   if (botScore !== null) {
-    const isHuman = scoreIsValid(botScore, botThreshold());
+    const isHuman = isValidHumanScore(botScore, botThreshold());
     if (!isHuman) {
-      setCookie('isValidCaptcha', 'false', 1);
-      reportBot();
-    } else {
-      setCookie('isValidCaptcha', 'true', 1);
-    }
+      setCookie('isValidCaptcha', 'false', 1, "Page activity score is not human");
+      callBotServlet();
+    } /*else {
+      setCookie('isValidCaptcha', 'true', 1, "Page activity score is human");
+    }*/
   }
 
   return pageLoadDetector.ready;
