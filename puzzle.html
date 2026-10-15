@@ -1,0 +1,626 @@
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+
+
+<div class="w-full max-w-lg">
+<article class="bg-white border border-gray-200 rounded-2xl shadow-xl shadow-gray-200/70 overflow-hidden">
+  <div class="p-4 sm:p-5">
+    <div class="flex items-center gap-3 sm:gap-4">
+      <button id="verifyButton" type="button" class="group relative shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg border-2 border-gray-300 bg-white hover:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition duration-200 flex items-center justify-center" aria-label="Start human verification" aria-pressed="false">
+        <span id="emptyBox" class="block w-5 h-5 sm:w-6 sm:h-6 rounded border border-gray-300 bg-gray-50"></span>
+        <span id="loadingBox" class="hidden w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin"></span>
+        <span id="successBox" class="hidden w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-emerald-500 text-white items-center justify-center">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M5 10.5l3.2 3.2L15.5 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span id="failureBox" class="hidden w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-rose-500 text-white items-center justify-center">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </span>
+      </button>
+
+      <div class="min-w-0 flex-1">
+        <h2 class="text-base sm:text-lg font-semibold text-gray-900">Verify you are human</h2>
+        <p id="statusText" class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-gray-600" aria-live="polite">Check the box to begin.</p>
+      </div>
+
+      <div class="shrink-0">
+        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-md" aria-hidden="true">
+          <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none">
+            <path d="M7 11V8a5 5 0 0110 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M6.5 11h11A1.5 1.5 0 0119 12.5v6A1.5 1.5 0 0117.5 20h-11A1.5 1.5 0 015 18.5v-6A1.5 1.5 0 016.5 11z" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M12 15v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+</div>
+
+<div id="modalOverlay" class="hidden fixed inset-0 z-50 bg-gray-950/60 backdrop-blur-sm p-3 sm:p-4 items-center justify-center overflow-y-auto" aria-hidden="true">
+  <section id="challengePanel" role="dialog" aria-modal="true" aria-labelledby="challengeTitle" aria-describedby="challengeDescription" class="w-full max-w-md mx-auto my-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 max-h-[95vh] overflow-y-auto">
+    <header class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white p-4 sm:p-5">
+      <div class="flex items-start justify-between gap-3 sm:gap-4">
+        <div class="min-w-0 flex-1">
+          <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-indigo-100">CAPTCHA Challenge</p>
+          <h2 id="challengeTitle" class="mt-1 text-lg sm:text-xl font-bold">Complete the verification</h2>
+        </div>
+        <button id="closeModalButton" type="button" class="shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-white/25 transition flex items-center justify-center" aria-label="Close challenge">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <p id="challengeDescription" class="mt-2 sm:mt-3 text-xs sm:text-sm text-indigo-50">Complete the <span id="targetLabel" class="font-bold underline decoration-white/50 underline-offset-4">challenge</span>, then press Verify.</p>
+    </header>
+
+    <div class="p-4 sm:p-5">
+      <div id="feedbackBox" class="hidden mb-3 sm:mb-4 rounded-xl border p-2.5 sm:p-3 text-xs sm:text-sm" role="alert"></div>
+
+      <div class="flex items-center justify-between gap-2 sm:gap-3 mb-3">
+        <p id="challengePrompt" class="text-xs sm:text-sm font-medium text-gray-700">Follow the instruction below</p>
+        <button id="refreshButton" type="button" class="inline-flex items-center gap-1 sm:gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition whitespace-nowrap" aria-label="Get a new puzzle">
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M16 7a6 6 0 10.9 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            <path d="M16 3v4h-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          New puzzle
+        </button>
+      </div>
+
+      <div id="tileGrid" class="grid grid-cols-3 gap-1.5 sm:gap-2 min-h-[14rem] sm:min-h-[18rem]" aria-label="CAPTCHA challenge area"></div>
+
+      <div class="mt-4 sm:mt-5 flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <button id="submitChallengeButton" type="button" class="flex-1 rounded-xl bg-indigo-600 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition">Verify selection</button>
+        <button id="clearSelectionButton" type="button" class="rounded-xl border border-gray-200 bg-white px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-100 transition">Clear</button>
+      </div>
+
+      <div class="mt-3 sm:mt-4 flex items-center justify-between text-[10px] sm:text-xs text-gray-500">
+        <span id="attemptText">Attempts: 0</span>
+        <span>Keyboard accessible</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var verifyButton = document.getElementById("verifyButton");
+  var emptyBox = document.getElementById("emptyBox");
+  var loadingBox = document.getElementById("loadingBox");
+  var successBox = document.getElementById("successBox");
+  var failureBox = document.getElementById("failureBox");
+  var statusText = document.getElementById("statusText");
+  var modalOverlay = document.getElementById("modalOverlay");
+  var challengePanel = document.getElementById("challengePanel");
+  var closeModalButton = document.getElementById("closeModalButton");
+  var challengeTitle = document.getElementById("challengeTitle");
+  var challengeDescription = document.getElementById("challengeDescription");
+  var challengePrompt = document.getElementById("challengePrompt");
+  var targetLabel = document.getElementById("targetLabel");
+  var tileGrid = document.getElementById("tileGrid");
+  var submitChallengeButton = document.getElementById("submitChallengeButton");
+  var clearSelectionButton = document.getElementById("clearSelectionButton");
+  var refreshButton = document.getElementById("refreshButton");
+  var feedbackBox = document.getElementById("feedbackBox");
+  var attemptText = document.getElementById("attemptText");
+
+  var tilePuzzles = [
+    {
+      title: "Select all matching images",
+      target: "traffic lights",
+      instruction: "Select all images with traffic lights, then press Verify.",      prompt: "Select all squares with traffic lights",
+      cells: [
+        { label: "traffic light", icon: "\u{1F6A6}", bg: "from-emerald-100 to-lime-200", text: "text-emerald-700", correct: true },
+        { label: "car", icon: "\u{1F697}", bg: "from-sky-100 to-blue-200", text: "text-sky-700", correct: false },
+        { label: "stop sign", icon: "\u{1F6D1}", bg: "from-rose-100 to-red-200", text: "text-rose-700", correct: false },
+        { label: "traffic light", icon: "\u{1F6A6}", bg: "from-emerald-100 to-lime-200", text: "text-emerald-700", correct: true },
+        { label: "bicycle", icon: "\u{1F6B2}", bg: "from-cyan-100 to-teal-200", text: "text-teal-700", correct: false },
+        { label: "bus", icon: "\u{1F68C}", bg: "from-amber-100 to-yellow-200", text: "text-amber-700", correct: false },
+        { label: "crosswalk", icon: "\u25A6", bg: "from-gray-100 to-slate-200", text: "text-slate-600", correct: false },
+        { label: "traffic light", icon: "\u{1F6A6}", bg: "from-emerald-100 to-lime-200", text: "text-emerald-700", correct: true },
+        { label: "taxi", icon: "\u{1F695}", bg: "from-orange-100 to-yellow-200", text: "text-orange-700", correct: false }
+      ]
+    },
+    {
+      title: "Select all matching images",
+      target: "bridges",
+      instruction: "Select all images with bridges, then press Verify.",
+      prompt: "Select all squares with bridges",
+      cells: [
+        { label: "river", icon: "\u2248", bg: "from-sky-100 to-blue-200", text: "text-sky-700", correct: false },
+        { label: "bridge", icon: "\u{1F309}", bg: "from-indigo-100 to-violet-200", text: "text-indigo-700", correct: true },
+        { label: "house", icon: "\u2302", bg: "from-amber-100 to-yellow-200", text: "text-amber-700", correct: false },
+        { label: "bridge", icon: "\u{1F309}", bg: "from-indigo-100 to-violet-200", text: "text-indigo-700", correct: true },
+        { label: "mountain", icon: "\u25B3", bg: "from-emerald-100 to-green-200", text: "text-emerald-700", correct: false },
+        { label: "tower", icon: "\u25A5", bg: "from-gray-100 to-slate-200", text: "text-slate-600", correct: false },
+        { label: "boat", icon: "\u26F5", bg: "from-cyan-100 to-teal-200", text: "text-teal-700", correct: false },
+        { label: "bridge", icon: "\u{1F309}", bg: "from-indigo-100 to-violet-200", text: "text-indigo-700", correct: true },
+        { label: "tree", icon: "\u2663", bg: "from-lime-100 to-green-200", text: "text-lime-700", correct: false }
+      ]
+    },
+    {
+      title: "Select all matching images",
+      target: "buses",      instruction: "Select all images with buses, then press Verify.",
+      prompt: "Select all squares with buses",
+      cells: [
+        { label: "bus", icon: "\u{1F68C}", bg: "from-amber-100 to-yellow-200", text: "text-amber-700", correct: true },
+        { label: "truck", icon: "\u{1F69A}", bg: "from-slate-100 to-gray-200", text: "text-slate-700", correct: false },
+        { label: "car", icon: "\u{1F697}", bg: "from-sky-100 to-blue-200", text: "text-sky-700", correct: false },
+        { label: "train", icon: "\u{1F686}", bg: "from-violet-100 to-purple-200", text: "text-violet-700", correct: false },
+        { label: "bus", icon: "\u{1F68C}", bg: "from-amber-100 to-yellow-200", text: "text-amber-700", correct: true },
+        { label: "bicycle", icon: "\u{1F6B2}", bg: "from-emerald-100 to-green-200", text: "text-emerald-700", correct: false },
+        { label: "taxi", icon: "\u{1F695}", bg: "from-orange-100 to-yellow-200", text: "text-orange-700", correct: false },        { label: "bus", icon: "\u{1F68C}", bg: "from-amber-100 to-yellow-200", text: "text-amber-700", correct: true },
+        { label: "airplane", icon: "\u2708", bg: "from-cyan-100 to-teal-200", text: "text-teal-700", correct: false }
+      ]
+    }
+  ];
+
+  var alignPuzzles = [
+    { title: "Align the puzzle piece", target: 28, start: 72, label: "left gap" },
+    { title: "Align the puzzle piece", target: 50, start: 14, label: "center gap" },
+    { title: "Align the puzzle piece", target: 74, start: 22, label: "right gap" }
+  ];
+
+  var patternPuzzles = [
+    {
+      title: "Complete the visual pattern",
+      instruction: "Choose the tile that correctly completes the pattern, then press Verify.",
+      prompt: "Choose the missing tile",
+      sequence: [
+        { icon: "\u25B2", label: "blue triangle", bg: "from-blue-100 to-indigo-200", text: "text-blue-700" },
+        { icon: "\u25CF", label: "green circle", bg: "from-emerald-100 to-green-200", text: "text-emerald-700" },        { icon: "\u25B2", label: "blue triangle", bg: "from-blue-100 to-indigo-200", text: "text-blue-700" },
+        { icon: "\u25CF", label: "green circle", bg: "from-emerald-100 to-green-200", text: "text-emerald-700" }
+      ],
+      options: [
+        { id: "blue-triangle", icon: "\u25B2", label: "blue triangle", bg: "from-blue-100 to-indigo-200", text: "text-blue-700", correct: true },
+        { id: "green-circle", icon: "\u25CF", label: "green circle", bg: "from-emerald-100 to-green-200", text: "text-emerald-700", correct: false },
+        { id: "yellow-star", icon: "\u2605", label: "yellow star", bg: "from-amber-100 to-yellow-200", text: "text-amber-700", correct: false },
+        { id: "red-square", icon: "\u25A0", label: "red square", bg: "from-rose-100 to-red-200", text: "text-rose-700", correct: false }
+      ]
+    },
+    {
+      title: "Complete the visual pattern",
+      instruction: "Choose the tile that correctly completes the pattern, then press Verify.",
+      prompt: "Choose the missing tile",
+      sequence: [        { icon: "\u25C6", label: "purple diamond", bg: "from-violet-100 to-purple-200", text: "text-violet-700" },
+        { icon: "\u25C6\u25C6", label: "two purple diamonds", bg: "from-violet-100 to-purple-200", text: "text-violet-700" },
+        { icon: "\u25C6\u25C6\u25C6", label: "three purple diamonds", bg: "from-violet-100 to-purple-200", text: "text-violet-700" },
+        { icon: "\u25C6\u25C6\u25C6\u25C6", label: "four purple diamonds", bg: "from-violet-100 to-purple-200", text: "text-violet-700" }
+      ],
+      options: [
+        { id: "three-diamonds", icon: "\u25C6\u25C6\u25C6", label: "three purple diamonds", bg: "from-violet-100 to-purple-200", text: "text-violet-700", correct: false },
+        { id: "five-diamonds", icon: "\u25C6\u25C6\u25C6\u25C6\u25C6", label: "five purple diamonds", bg: "from-violet-100 to-purple-200", text: "text-violet-700", correct: true },
+        { id: "one-diamond", icon: "\u25C6", label: "one purple diamond", bg: "from-violet-100 to-purple-200", text: "text-violet-700", correct: false },        { id: "four-circles", icon: "\u25CF\u25CF\u25CF\u25CF", label: "four circles", bg: "from-sky-100 to-blue-200", text: "text-sky-700", correct: false }
+      ]
+    },
+    {
+      title: "Complete the visual pattern",
+      instruction: "Choose the tile that correctly completes the pattern, then press Verify.",
+      prompt: "Choose the missing tile",
+      sequence: [
+        { icon: "\u25A0", label: "red square", bg: "from-rose-100 to-red-200", text: "text-rose-700" },
+        { icon: "\u25CF", label: "yellow circle", bg: "from-amber-100 to-yellow-200", text: "text-amber-700" },
+        { icon: "\u25CF", label: "yellow circle", bg: "from-amber-100 to-yellow-200", text: "text-amber-700" },
+        { icon: "\u25A0", label: "red square", bg: "from-rose-100 to-red-200", text: "text-rose-700" },
+        { icon: "\u25CF", label: "yellow circle", bg: "from-amber-100 to-yellow-200", text: "text-amber-700" }
+      ],
+      options: [        { id: "yellow-circle", icon: "\u25CF", label: "yellow circle", bg: "from-amber-100 to-yellow-200", text: "text-amber-700", correct: true },
+        { id: "red-square", icon: "\u25A0", label: "red square", bg: "from-rose-100 to-red-200", text: "text-rose-700", correct: false },
+        { id: "blue-triangle", icon: "\u25B2", label: "blue triangle", bg: "from-blue-100 to-indigo-200", text: "text-blue-700", correct: false },
+        { id: "green-plus", icon: "\u271A", label: "green plus", bg: "from-emerald-100 to-green-200", text: "text-emerald-700", correct: false }
+      ]
+    }
+  ];
+  var selectedTiles = new Set();
+  var correctTiles = new Set();
+  var activeChallenge = null;
+  var state = "unchecked";
+  var attempts = 0;
+  var lastFocusedElement = null;
+
+  function setState(nextState) {
+    state = nextState;
+    emptyBox.classList.add("hidden");
+    loadingBox.classList.add("hidden");
+    successBox.classList.add("hidden");
+    failureBox.classList.add("hidden");
+    successBox.classList.remove("flex");
+    failureBox.classList.remove("flex");
+    verifyButton.classList.remove("border-emerald-500", "bg-emerald-50", "border-rose-500", "bg-rose-50", "border-indigo-500");
+
+    if (nextState === "unchecked") {
+      emptyBox.classList.remove("hidden");
+      statusText.textContent = "Check the box to begin.";
+      verifyButton.setAttribute("aria-pressed", "false");
+      verifyButton.setAttribute("aria-label", "Start human verification");
+    }
+    if (nextState === "loading") {
+      loadingBox.classList.remove("hidden");
+      verifyButton.classList.add("border-indigo-500");      statusText.textContent = "Preparing a short puzzle\u2026";
+      verifyButton.setAttribute("aria-label", "Preparing challenge");
+    }
+    if (nextState === "challenge") {
+      emptyBox.classList.remove("hidden");
+      verifyButton.classList.add("border-indigo-500");
+      statusText.textContent = "Puzzle challenge is open.";
+      verifyButton.setAttribute("aria-label", "Puzzle challenge is open");
+    }
+    if (nextState === "success") {
+      successBox.classList.remove("hidden");
+      successBox.classList.add("flex");
+      verifyButton.classList.add("border-emerald-500", "bg-emerald-50");
+      statusText.textContent = "Verification complete. Thank you.";
+      verifyButton.setAttribute("aria-pressed", "true");
+      verifyButton.setAttribute("aria-label", "Human verification complete");
+    }
+    if (nextState === "failure") {
+      failureBox.classList.remove("hidden");
+      failureBox.classList.add("flex");
+      verifyButton.classList.add("border-rose-500", "bg-rose-50");      statusText.textContent = "Verification failed. Please try again.";
+      verifyButton.setAttribute("aria-pressed", "false");
+      verifyButton.setAttribute("aria-label", "Verification failed, try again");
+    }
+  }
+
+  function shuffle(array) {
+    var copy = array.slice();
+    for (var i = copy.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var temp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = temp;
+    }
+    return copy;
+  }
+
+  function showFeedback(type, message) {
+    feedbackBox.classList.remove("hidden", "border-rose-200", "bg-rose-50", "text-rose-700", "border-emerald-200", "bg-emerald-50", "text-emerald-700", "border-indigo-200", "bg-indigo-50", "text-indigo-700");
+    if (type === "error") {
+      feedbackBox.classList.add("border-rose-200", "bg-rose-50", "text-rose-700");
+    } else if (type === "success") {
+      feedbackBox.classList.add("border-emerald-200", "bg-emerald-50", "text-emerald-700");
+    } else {
+      feedbackBox.classList.add("border-indigo-200", "bg-indigo-50", "text-indigo-700");
+    }
+    feedbackBox.textContent = message;
+  }
+
+  function hideFeedback() {
+    feedbackBox.classList.add("hidden");
+    feedbackBox.textContent = "";
+  }
+
+  function updateChallengeCopy(title, instruction, prompt, targetText) {
+    challengeTitle.textContent = title;
+    challengeDescription.textContent = instruction;
+    challengePrompt.textContent = prompt;
+    targetLabel.textContent = targetText || "challenge";
+  }
+
+  function makeTileButton(tile, index, id, clickHandler) {
+    var button = document.createElement("button");
+    var iconEl = document.createElement("span");
+    var labelEl = document.createElement("span");
+
+    button.type = "button";
+    button.dataset.id = id;
+    button.dataset.selectable = "true";
+    button.setAttribute("aria-pressed", "false");
+    button.setAttribute("aria-label", "Tile " + (index + 1) + ": " + tile.label);
+    button.className = "aspect-square rounded-xl bg-gradient-to-br " + tile.bg + " border-2 border-transparent hover:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition duration-200 flex flex-col items-center justify-center gap-1 sm:gap-2 shadow-sm " + tile.text;
+
+    iconEl.className = "text-2xl sm:text-3xl md:text-4xl font-black leading-none";
+    iconEl.textContent = tile.icon;
+
+    labelEl.className = "text-[8px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wide text-gray-600 truncate max-w-full px-1";
+    labelEl.textContent = tile.label;
+
+    button.appendChild(iconEl);
+    button.appendChild(labelEl);
+    button.addEventListener("click", function () {
+      clickHandler(button, id);
+    });
+    return button;
+  }
+
+  function renderTilePuzzle() {
+    var puzzle = tilePuzzles[Math.floor(Math.random() * tilePuzzles.length)];
+    var finalTiles = shuffle(puzzle.cells.map(function (cell, index) {
+      return Object.assign({ id: "tile-" + index + "-" + Date.now() }, cell);
+    }));
+
+    updateChallengeCopy(puzzle.title, puzzle.instruction, puzzle.prompt, puzzle.target);
+    submitChallengeButton.textContent = "Verify selection";
+    clearSelectionButton.textContent = "Clear";
+    clearSelectionButton.classList.remove("hidden");
+    tileGrid.className = "grid grid-cols-3 gap-1.5 sm:gap-2 min-h-[14rem] sm:min-h-[18rem]";
+    tileGrid.setAttribute("aria-label", "Image selection grid");
+    tileGrid.innerHTML = "";
+    activeChallenge = { type: "tiles" };
+
+    finalTiles.forEach(function (tile, index) {
+      if (tile.correct) correctTiles.add(tile.id);
+      tileGrid.appendChild(makeTileButton(tile, index, tile.id, toggleTile));    });
+  }
+
+  function renderAlignPuzzle() {
+    var puzzle = alignPuzzles[Math.floor(Math.random() * alignPuzzles.length)];
+
+    updateChallengeCopy(puzzle.title, "Drag the slider until the piece is centered in the outlined gap, then press Verify.", "Align the puzzle piece with the outlined gap", puzzle.label);
+    submitChallengeButton.textContent = "Verify alignment";
+    clearSelectionButton.textContent = "Reset";
+    clearSelectionButton.classList.remove("hidden");
+    tileGrid.className = "space-y-3 sm:space-y-4 min-h-[12rem] sm:min-h-[18rem]";
+    tileGrid.setAttribute("aria-label", "Drag alignment puzzle");
+    tileGrid.innerHTML = "";
+    activeChallenge = { type: "align", target: puzzle.target, start: puzzle.start, value: puzzle.start };
+
+    var scene = document.createElement("div");
+    scene.className = "relative h-36 sm:h-48 overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-slate-100 via-white to-indigo-100 shadow-inner";
+
+    var track = document.createElement("div");    track.className = "absolute left-4 right-4 sm:left-6 sm:right-6 top-1/2 h-12 sm:h-16 -translate-y-1/2 rounded-xl bg-white/70 border border-white shadow-sm";
+
+    var gap = document.createElement("div");
+    gap.className = "absolute top-1/2 w-10 h-10 sm:w-14 sm:h-14 -translate-x-1/2 -translate-y-1/2 rounded-xl border-4 border-dashed border-indigo-500 bg-indigo-50/70";
+    gap.style.left = puzzle.target + "%";
+    gap.setAttribute("aria-hidden", "true");
+
+    var piece = document.createElement("div");
+    piece.id = "alignPiece";
+    piece.className = "absolute top-1/2 w-10 h-10 sm:w-14 sm:h-14 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg flex items-center justify-center text-xl sm:text-2xl font-black transition-[left] duration-75";
+    piece.style.left = puzzle.start + "%";
+    piece.textContent = "\u25C6";
+    piece.setAttribute("aria-hidden", "true");
+
+    var hint = document.createElement("p");    hint.className = "absolute bottom-2 sm:bottom-3 left-3 right-3 sm:left-4 sm:right-4 text-center text-[10px] sm:text-xs font-medium text-gray-500";
+    hint.textContent = "Move the piece into the dashed outline.";
+
+    scene.appendChild(track);
+    scene.appendChild(gap);
+    scene.appendChild(piece);
+    scene.appendChild(hint);
+
+    var range = document.createElement("input");
+    range.id = "alignRange";
+    range.type = "range";
+    range.min = "0";
+    range.max = "100";
+    range.step = "1";
+    range.value = String(puzzle.start);
+    range.className = "w-full accent-indigo-600 cursor-pointer";
+    range.setAttribute("aria-label", "Puzzle piece horizontal position");
+    range.addEventListener("input", function () {
+      activeChallenge.value = Number(range.value);
+      piece.style.left = range.value + "%";
+      hideFeedback();
+    });
+
+    tileGrid.appendChild(scene);
+    tileGrid.appendChild(range);
+  }
+
+  function renderPatternPuzzle() {
+    var puzzle = patternPuzzles[Math.floor(Math.random() * patternPuzzles.length)];    var totalCols = puzzle.sequence.length + 1;
+
+    updateChallengeCopy(puzzle.title, puzzle.instruction, puzzle.prompt, "pattern");
+    submitChallengeButton.textContent = "Verify answer";
+    clearSelectionButton.textContent = "Clear";
+    clearSelectionButton.classList.remove("hidden");
+    tileGrid.className = "space-y-3 sm:space-y-4 min-h-[14rem] sm:min-h-[18rem]";
+    tileGrid.setAttribute("aria-label", "Visual pattern puzzle");
+    tileGrid.innerHTML = "";
+    activeChallenge = { type: "pattern", correctId: puzzle.options.find(function (o) { return o.correct; }).id };
+
+    var sequence = document.createElement("div");
+    sequence.className = "grid gap-1.5 sm:gap-2";
+    sequence.style.gridTemplateColumns = "repeat(" + totalCols + ", minmax(0, 1fr))";
+
+    puzzle.sequence.forEach(function (tile, index) {
+      var cell = document.createElement("div");
+      cell.className = "aspect-square rounded-xl bg-gradient-to-br " + tile.bg + " border border-white shadow-sm flex items-center justify-center text-lg sm:text-2xl md:text-3xl font-black " + tile.text;
+      cell.setAttribute("aria-label", "Pattern item " + (index + 1) + ": " + tile.label);
+      cell.textContent = tile.icon;
+      sequence.appendChild(cell);
+    });
+
+    var missing = document.createElement("div");
+    missing.className = "aspect-square rounded-xl border-2 border-dashed border-indigo-400 bg-indigo-50 flex items-center justify-center text-xl sm:text-3xl font-black text-indigo-500";
+    missing.setAttribute("aria-label", "Missing pattern item");
+    missing.textContent = "?";
+    sequence.appendChild(missing);
+
+    var optionLabel = document.createElement("p");
+    optionLabel.className = "text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-gray-500";
+    optionLabel.textContent = "Answer choices";
+
+    var options = document.createElement("div");
+    options.className = "grid grid-cols-2 gap-1.5 sm:gap-2";
+
+    puzzle.options.forEach(function (option, index) {
+      options.appendChild(makeTileButton(option, index, option.id, selectPatternOption));
+    });
+
+    tileGrid.appendChild(sequence);
+    tileGrid.appendChild(optionLabel);
+    tileGrid.appendChild(options);
+  }
+
+  function generatePuzzle() {
+    selectedTiles.clear();
+    correctTiles.clear();
+    hideFeedback();
+    var renderers = [renderTilePuzzle, renderAlignPuzzle, renderPatternPuzzle];
+    renderers[Math.floor(Math.random() * renderers.length)]();
+  }
+
+  function toggleTile(button, id) {
+    if (selectedTiles.has(id)) {
+      selectedTiles.delete(id);      button.setAttribute("aria-pressed", "false");
+      button.classList.remove("border-indigo-600", "ring-4", "ring-indigo-100", "scale-[0.98]");
+      button.classList.add("border-transparent");
+    } else {
+      selectedTiles.add(id);
+      button.setAttribute("aria-pressed", "true");
+      button.classList.remove("border-transparent");
+      button.classList.add("border-indigo-600", "ring-4", "ring-indigo-100", "scale-[0.98]");
+    }
+    hideFeedback();
+  }
+
+  function selectPatternOption(button, id) {
+    selectedTiles.clear();
+    Array.from(tileGrid.querySelectorAll("button[data-selectable='true']")).forEach(function (b) {
+      b.setAttribute("aria-pressed", "false");
+      b.classList.remove("border-indigo-600", "ring-4", "ring-indigo-100", "scale-[0.98]");
+      b.classList.add("border-transparent");
+    });
+    selectedTiles.add(id);
+    button.setAttribute("aria-pressed", "true");
+    button.classList.remove("border-transparent");
+    button.classList.add("border-indigo-600", "ring-4", "ring-indigo-100", "scale-[0.98]");    hideFeedback();
+  }
+
+  function clearSelection() {
+    selectedTiles.clear();
+    if (activeChallenge && activeChallenge.type === "align") {
+      var range = document.getElementById("alignRange");
+      var piece = document.getElementById("alignPiece");
+      if (range && piece) {
+        range.value = String(activeChallenge.start);
+        activeChallenge.value = activeChallenge.start;
+        piece.style.left = activeChallenge.start + "%";
+      }
+    }
+    Array.from(tileGrid.querySelectorAll("button[data-selectable='true']")).forEach(function (b) {
+      b.setAttribute("aria-pressed", "false");
+      b.classList.remove("border-indigo-600", "ring-4", "ring-indigo-100", "scale-[0.98]");
+      b.classList.add("border-transparent");
+    });
+    hideFeedback();
+  }
+
+  function openChallenge() {
+    lastFocusedElement = document.activeElement;
+    generatePuzzle();
+    setState("challenge");
+    modalOverlay.classList.remove("hidden");
+    modalOverlay.classList.add("flex");    modalOverlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("overflow-hidden");
+    setTimeout(function () {
+      var first = tileGrid.querySelector("button");
+      if (first) first.focus();
+    }, 50);
+  }
+
+  function closeChallenge(cancelled) {
+    modalOverlay.classList.add("hidden");
+    modalOverlay.classList.remove("flex");
+    modalOverlay.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("overflow-hidden");
+    if (cancelled && state !== "success") {
+      setState(attempts > 0 ? "failure" : "unchecked");
+    }
+    if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+      lastFocusedElement.focus();
+    }
+  }
+
+  function verifySelection() {
+    attempts++;
+    attemptText.textContent = "Attempts: " + attempts;
+
+    if (!activeChallenge) {
+      showFeedback("error", "Please load a challenge and try again.");
+      return;
+    }
+
+    var isCorrect = false;
+
+    if (activeChallenge.type === "tiles") {
+      if (selectedTiles.size === 0) {        showFeedback("error", "Please select all matching images before verifying.");
+        return;
+      }
+      isCorrect = selectedTiles.size === correctTiles.size;
+      if (isCorrect) {
+        selectedTiles.forEach(function (id) {
+          if (!correctTiles.has(id)) isCorrect = false;
+        });
+      }
+    }
+
+    if (activeChallenge.type === "align") {
+      isCorrect = Math.abs(activeChallenge.value - activeChallenge.target) <= 2;
+    }
+
+    if (activeChallenge.type === "pattern") {
+      if (selectedTiles.size === 0) {
+        showFeedback("error", "Please choose one answer tile before verifying.");
+        return;
+      }
+      isCorrect = selectedTiles.has(activeChallenge.correctId);
+    }
+
+    if (isCorrect) {
+      document.cookie = "isValidCaptcha=true; max-age=3600; path=/; SameSite=Lax";
+      showFeedback("success", "Correct. Verification complete.");
+      setTimeout(function () {
+        setState("success");
+        closeChallenge(false);
+      }, 650);
+    } else {
+      setState("failure");
+      if (activeChallenge.type === "align") {
+        showFeedback("error", "The piece is not centered in the gap yet. Adjust and try again.");
+      } else {
+        showFeedback("error", "Incorrect. Review the puzzle and try again, or choose New puzzle.");
+      }
+    }
+  }
+
+  function startVerification() {
+    if (state === "success") return;
+    setState("loading");
+    setTimeout(openChallenge, 450);
+  }
+
+  verifyButton.addEventListener("click", startVerification);
+  closeModalButton.addEventListener("click", function () { closeChallenge(true); });
+  submitChallengeButton.addEventListener("click", verifySelection);
+  clearSelectionButton.addEventListener("click", clearSelection);
+  refreshButton.addEventListener("click", function () {
+    setState("challenge");
+    generatePuzzle();
+  });
+
+  modalOverlay.addEventListener("click", function (e) {
+    if (e.target === modalOverlay) closeChallenge(true);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !modalOverlay.classList.contains("hidden")) {
+      closeChallenge(true);
+    }
+    if (e.key === "Tab" && !modalOverlay.classList.contains("hidden")) {
+      var focusable = Array.from(challengePanel.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")).filter(function (el) { return !el.hasAttribute("disabled"); });
+      if (focusable.length === 0) return;
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  });
+
+  setState("unchecked");
+})();
+</script>

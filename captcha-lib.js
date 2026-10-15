@@ -4,6 +4,7 @@ import { NavigationRateDetector } from './NavigationRateDetector.js';
 
 export { PageLoadBotDetector, BotDetector, NavigationRateDetector };
 
+
 function setCookie(name, value, hours, path = '/', secure = false, sameSite = 'Lax', reason = null) {
     console.log("Setting cookie: ", name, value, hours, reason);
     const expires = new Date();
@@ -11,7 +12,7 @@ function setCookie(name, value, hours, path = '/', secure = false, sameSite = 'L
 
     let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
     cookieString += `; expires=${expires.toUTCString()}`;
-    cookieString += `; path=${path}`;
+    cookieString += `; path=/`;
     cookieString += `; SameSite=${sameSite}`;
 
     if (secure) {
@@ -106,7 +107,7 @@ function applyCaptchaCookie() {
   const navScore = navRateDetector.ready ? navRateDetector.score : null;
 
   if (navScore !== null && !isValidHumanScore(navScore, pageLoadThreshold())) {
-    setCookie('isValidCaptcha', 'false', 1, "Navigation score is not human");
+    setCookie('isValidCaptcha', 'false', 1,"/", false, 'Lax', "Navigation score is not human");
     callBotServlet();
     return pageLoadDetector.ready;
   }
@@ -116,7 +117,7 @@ function applyCaptchaCookie() {
   }
 
   if (pageScore !== null && !isValidHumanScore(pageScore, pageLoadThreshold())) {
-    setCookie('isValidCaptcha', 'false', 1, "Page score is not human");
+    setCookie('isValidCaptcha', 'false', 1,"/", false, 'Lax', "Page score is not human");
     callBotServlet();
     return pageLoadDetector.ready;
   }
@@ -124,7 +125,7 @@ function applyCaptchaCookie() {
   if (botScore !== null) {
     const isHuman = isValidHumanScore(botScore, botThreshold());
     if (!isHuman) {
-      setCookie('isValidCaptcha', 'false', 1, "Page activity score is not human");
+      setCookie('isValidCaptcha', 'false', 1,"/", false, 'Lax', "Page score is not human");  
       callBotServlet();
     } /*else {
       setCookie('isValidCaptcha', 'true', 1, "Page activity score is human");
