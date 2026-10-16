@@ -127,9 +127,9 @@ function applyCaptchaCookie() {
     if (!isHuman) {
       setCookie('isValidCaptcha', 'false', 1,"/", false, 'Lax', "Page score is not human");  
       callBotServlet();
-    } /*else {
-      setCookie('isValidCaptcha', 'true', 1, "Page activity score is human");
-    }*/
+    } else {
+      setCookie('isValidCaptcha', 'true', 1, "/", false, 'Lax', "Page activity score is human");
+    }
   }
 
   return pageLoadDetector.ready;
@@ -255,6 +255,8 @@ function startBotTrackerDemo() {
 
   detector.start();
 }
+
+setCookie('isValidCaptcha', 'false', 1, "/", false, 'Lax', "Initial captcha cookie set to false");
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', startBotTrackerDemo);
