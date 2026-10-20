@@ -29,6 +29,24 @@ let lastCaptchaCookie = null;
 
 const navRateDetector = new NavigationRateDetector();
 let botReportSent = false;
+let humanConfirmed = false;
+
+// Treat a real touch or scroll as proof of a human (mobile/touch devices never
+// generate the mouse/keyboard events the bot score relies on). Once confirmed,
+// mark the session human so the dispatcher stops returning 429.
+function confirmHumanInteraction(reason) {
+  if (humanConfirmed) {
+    return;
+  }
+  humanConfirmed = true;
+  setCookie('isValidCaptcha', 'true', 4, "/", false, 'Lax', reason);
+}
+
+function watchTouchAndScrollCaptcha() {
+  window.addEventListener('touchstart', () => confirmHumanInteraction('Touch detected - human'), { passive: true, once: true });
+  window.addEventListener('touchmove', () => confirmHumanInteraction('Touch move detected - human'), { passive: true, once: true });
+  window.addEventListener('scroll', () => confirmHumanInteraction('Scroll detected - human'), { passive: true, once: true });
+}
 
 function readNavigationRateScore() {
   if (!navRateDetector.ready) {
@@ -103,6 +121,12 @@ function isValidHumanScore(score, threshold) {
 }
 
 function applyCaptchaCookie() {
+  // A touch/scroll already proved this is a human; keep the cookie "true" and
+  // never let the mouse/page-load heuristics downgrade it back to "false".
+  if (humanConfirmed) {
+    setCookie('isValidCaptcha', 'true', 4, "/", false, 'Lax', "Human confirmed via touch/scroll");
+    return true;
+  }
   const pageScore = pageLoadDetector.ready ? pageLoadDetector.score : null;
   const navScore = navRateDetector.ready ? navRateDetector.score : null;
 
@@ -128,7 +152,7 @@ function applyCaptchaCookie() {
       setCookie('isValidCaptcha', 'false', 1,"/", false, 'Lax', "Page score is not human");  
       callBotServlet();
     } else {
-      setCookie('isValidCaptcha', 'true', 1, "/", false, 'Lax', "Page activity score is human");
+      setCookie('isValidCaptcha', 'true', 4, "/", false, 'Lax', "Page activity score is human");
     }
   }
 
@@ -172,6 +196,7 @@ function watchNavigationRateCaptcha() {
 
 function startBotTrackerDemo() {
   console.log("DOMContentLoaded");
+  watchTouchAndScrollCaptcha();
   watchNavigationRateCaptcha();
   watchPageLoadCaptcha();
 
