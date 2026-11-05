@@ -5,10 +5,23 @@ import { NavigationRateDetector } from './NavigationRateDetector.js';
 export { PageLoadBotDetector, BotDetector, NavigationRateDetector };
 
 
-function setCookie(name, value, hours, path = '/', secure = false, sameSite = 'Lax', reason = null) {
-    console.log("Setting cookie: ", name, value, hours, reason);
+function captchaWindowHours() {
+    const meta = document.querySelector('meta[name="captcha-window"]');
+    const hours = Number(meta && meta.content);
+    if (!Number.isFinite(hours) || hours <= 0) {
+        return null;
+    }
+    return hours;
+}
+
+function setCookie(name, value, path = '/', secure = false, sameSite = 'Lax', reason = null) {
+    const expiryHours = captchaWindowHours();
+    if (expiryHours === null) {
+        expiryHours = 12;
+    }
+    console.log("Setting cookie: ", name, value, expiryHours, reason);
     const expires = new Date();
-    expires.setTime(expires.getTime() + (hours * 60 * 60 * 1000)); // hours * 3,600,000 ms
+    expires.setTime(expires.getTime() + (expiryHours * 60 * 60 * 1000)); // hours * 3,600,000 ms
 
     let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
     cookieString += `; expires=${expires.toUTCString()}`;
@@ -23,13 +36,25 @@ function setCookie(name, value, hours, path = '/', secure = false, sameSite = 'L
     }
 
 
-const pageLoadDetector = new PageLoadBotDetector();
+let pageLoadDetector = null;
 let botDetector = null;
 let lastCaptchaCookie = null;
 
-const navRateDetector = new NavigationRateDetector();
+let navRateDetector = null;
 let botReportSent = false;
 let humanConfirmed = false;
+
+function isGooglebotUserAgent() {
+  return navigator.userAgent.includes('Googlebot');
+}
+
+function hasVerifybotElement() {
+  return document.getElementById('verifybot') !== null;
+}
+
+function shouldSkipBotCheck() {
+  return isGooglebotUserAgent() || hasVerifybotElement();
+}
 
 // Treat a real touch or scroll as proof of a human (mobile/touch devices never
 // generate the mouse/keyboard events the bot score relies on). Once confirmed,
@@ -39,7 +64,7 @@ function confirmHumanInteraction(reason) {
     return;
   }
   humanConfirmed = true;
-  setCookie('isValidCaptcha', 'true', 4, "/", false, 'Lax', reason);
+  setCookie('isValidCaptcha', 'true', "/", false, 'Lax', reason);
 }
 
 function watchTouchAndScrollCaptcha() {
@@ -72,7 +97,7 @@ function botJsonUrl() {
 }
 
 function callBotServlet() {
-  if (botReportSent) {
+  if (shouldSkipBotCheck() || botReportSent) {
     return;
   }
   botReportSent = true;
@@ -124,14 +149,14 @@ function applyCaptchaCookie() {
   // A touch/scroll already proved this is a human; keep the cookie "true" and
   // never let the mouse/page-load heuristics downgrade it back to "false".
   if (humanConfirmed) {
-    setCookie('isValidCaptcha', 'true', 4, "/", false, 'Lax', "Human confirmed via touch/scroll");
+    setCookie('isValidCaptcha', 'true', "/", false, 'Lax', "Human confirmed via touch/scroll");
     return true;
   }
   const pageScore = pageLoadDetector.ready ? pageLoadDetector.score : null;
   const navScore = navRateDetector.ready ? navRateDetector.score : null;
 
   if (navScore !== null && !isValidHumanScore(navScore, pageLoadThreshold())) {
-    setCookie('isValidCaptcha', 'false', 1,"/", false, 'Lax', "Navigation score is not human");
+    setCookie('isValidCaptcha', 'false', "/", false, 'Lax', "Navigation score is not human");
     callBotServlet();
     return pageLoadDetector.ready;
   }
@@ -141,7 +166,7 @@ function applyCaptchaCookie() {
   }
 
   if (pageScore !== null && !isValidHumanScore(pageScore, pageLoadThreshold())) {
-    setCookie('isValidCaptcha', 'false', 1,"/", false, 'Lax', "Page score is not human");
+    setCookie('isValidCaptcha', 'false', "/", false, 'Lax', "Page score is not human");
     callBotServlet();
     return pageLoadDetector.ready;
   }
@@ -149,10 +174,10 @@ function applyCaptchaCookie() {
   if (botScore !== null) {
     const isHuman = isValidHumanScore(botScore, botThreshold());
     if (!isHuman) {
-      setCookie('isValidCaptcha', 'false', 1,"/", false, 'Lax', "Page score is not human");  
+      setCookie('isValidCaptcha', 'false', "/", false, 'Lax', "Page score is not human");
       callBotServlet();
     } else {
-      setCookie('isValidCaptcha', 'true', 4, "/", false, 'Lax', "Page activity score is human");
+      setCookie('isValidCaptcha', 'true', "/", false, 'Lax', "Page activity score is human");
     }
   }
 
@@ -281,10 +306,22 @@ function startBotTrackerDemo() {
   detector.start();
 }
 
-setCookie('isValidCaptcha', 'false', 1, "/", false, 'Lax', "Initial captcha cookie set to false");
+function startCaptcha() {
+  if (shouldSkipBotCheck()) {
+    return;
+  }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startBotTrackerDemo);
-} else {
+  pageLoadDetector = new PageLoadBotDetector();
+  navRateDetector = new NavigationRateDetector();
+
+  //setCookie('isValidCaptcha', 'false', "/", false, 'Lax', "Initial captcha cookie set to false");
   startBotTrackerDemo();
+}
+
+if (!isGooglebotUserAgent()) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startCaptcha);
+  } else {
+    startCaptcha();
+  }
 }
