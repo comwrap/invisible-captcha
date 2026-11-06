@@ -397,7 +397,7 @@ export class BotDetector {
           return this.scoreCache;
         }
         let score = this.calculateScore();
-        console.log(score)
+        //console.log(score)
         return score;
       }
 

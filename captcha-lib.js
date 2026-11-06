@@ -78,7 +78,7 @@ function readNavigationRateScore() {
     return null;
   }
   const navReport = navRateDetector.getReport();
-  console.log("Navigation rate report: ", JSON.stringify(navReport));
+  //console.log("Navigation rate report: ", JSON.stringify(navReport));
   return navReport.score;
 }
 
@@ -111,7 +111,7 @@ function readPageLoadScore() {
     return null;
   }
   const pageReport = pageLoadDetector.getReport();
-  console.log("Page report: ", JSON.stringify(pageReport));
+  //console.log("Page report: ", JSON.stringify(pageReport));
   return pageReport.score;
 }
 
@@ -137,7 +137,7 @@ function readBotScore() {
   if (report.eventCount < botDetector.config.minEventsForScore) {
     return null;
   }
-  console.log("Bot report: ", JSON.stringify(report));
+  //console.log("Bot report: ", JSON.stringify(report));
   return report.score;
 }
 
@@ -263,7 +263,7 @@ function startBotTrackerDemo() {
 
   setInterval(() => {
     const report = detector.getReport();
-    console.log("Report:: ", report);
+    //console.log("Report:: ", report);
     if (report.eventCount === 0) return;
     applyCaptchaCookie();
     const scorePercent = (report.score * 100).toFixed(1);

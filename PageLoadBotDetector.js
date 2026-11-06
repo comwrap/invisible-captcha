@@ -41,7 +41,7 @@ export class PageLoadBotDetector {
       navigationType:   this._analyzeNavigationType(nav),
       documentTiming:   this._analyzeDocumentTiming(nav),
     };
-    console.log("Signals: ", this.signals);
+    //console.log("Signals: ", this.signals);
 
     // Weighted aggregation
     const weights = {
