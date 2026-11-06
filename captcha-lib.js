@@ -15,7 +15,7 @@ function captchaWindowHours() {
 }
 
 function setCookie(name, value, path = '/', secure = false, sameSite = 'Lax', reason = null) {
-    const expiryHours = captchaWindowHours();
+    let expiryHours = captchaWindowHours();
     if (expiryHours === null) {
         expiryHours = 12;
     }
